@@ -3,7 +3,7 @@
 **Proyecto:** Travel Hotel — Motor de Reservas  
 **Versión:** 1.0.0-MVP  
 **Fecha:** 2026-03-24  
-**Autor:** QA  
+**Autor:** Joel Tates (QA)  
 **HUs en Alcance:** HU0–HU3, HU5–HU8, HU11  
 **Story Points Totales:** 34  
 
@@ -69,8 +69,8 @@ Este plan cubre la estrategia de calidad integral para el sistema **Travel Hotel
 
 | Tipo | Herramienta Propuesta | Condición de Ejecución |
 |---|---|---|
-| Funcional / API | JEST | Siempre — obligatorio |
-| Concurrencia | pytest-asyncio + threading | HU3 — obligatorio |
+| Funcional / API | Karate | Siempre — obligatorio |
+| Concurrencia | k6 + threading | HU3 — obligatorio |
 | Seguridad (OWASP) | OWASP ZAP + pruebas manuales | HU3 — obligatorio |
 | Performance / Load | k6 | Solo si hay SLAs definidos en spec |
 
@@ -96,7 +96,204 @@ Este plan cubre la estrategia de calidad integral para el sistema **Travel Hotel
 
 ---
 
-## 3. Matriz de Riesgo
+
+## 5. Entorno de Pruebas
+
+### 5.1 Ambientes
+
+| Ambiente                    | Propósito                                                  | Configuración                                                           |
+| --------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Local (DEV)**             | Desarrollo y validación rápida                             | Docker Compose (API + PostgreSQL), datos mock                           |
+| **QA / Testing**            | Ejecución formal de pruebas funcionales, integración y E2E | Entorno aislado con PostgreSQL real, datos controlados vía Seeder (HU1) |
+| **Staging**                 | Validación pre-release                                     | Configuración similar a producción, incluye worker activo (HU8)         |
+| **Producción (solo smoke)** | Verificación post-deploy                                   | Datos reales, pruebas limitadas no destructivas                         |
+
+---
+
+### 5.2 Configuración Técnica
+
+* **Backend:** FastAPI
+* **Base de Datos:** PostgreSQL 16+
+* **Control de Concurrencia:** `SELECT FOR UPDATE`
+* **Worker Async:** proceso separado para expiración de holds (HU8)
+* **Datos de prueba:** cargados mediante Seeder (HU1)
+* **Aislamiento DB:** `READ COMMITTED` (mínimo requerido)
+
+---
+
+### 5.3 Reglas del Entorno
+
+* ❌ Prohibido ejecutar pruebas destructivas en producción
+* ✅ Cada ejecución de pruebas debe iniciar con datos consistentes (reset DB o rollback)
+* ✅ Logs habilitados para auditoría de concurrencia y pagos
+* ✅ Tiempo del sistema controlado/mocable para pruebas de expiración (HU8)
+
+---
+
+## 6. Herramientas
+
+| Herramienta                 | Tipo               | Propósito                                            |
+| --------------------------- | ------------------ | ---------------------------------------------------- |
+| **Karate DSL**              | Testing API        | Automatización de pruebas funcionales y E2E          |
+| **k6**                      | Performance / Load | Pruebas de carga, stress y concurrencia              |
+| **OWASP ZAP**               | Seguridad          | Detección de vulnerabilidades OWASP Top 10           |
+| **JEST**                  | Unit Testing       | Validación de lógica de negocio en servicios         |
+| **Docker / Docker Compose** | Infraestructura    | Levantar entornos reproducibles                      |
+| **Postman (opcional)**      | Exploratorio       | Pruebas manuales rápidas                             |
+| **CI/CD (GitHub Actions)**  | Automatización     | Ejecución de suites (smoke, regresión, concurrencia) |
+| **DBeaver / psql**          | DB Client          | Validación directa de datos y locks                  |
+
+---
+
+## 7. Roles y Responsabilidades
+
+### 7.1 QA (Quality Assurance)
+
+* Diseñar estrategia de pruebas y plan de QA
+* Definir y mantener casos de prueba (Gherkin + automatización)
+* Ejecutar pruebas:
+
+  * Funcionales (Karate)
+  * Concurrencia (k6)
+  * Seguridad (ZAP)
+* Validar invariantes críticas:
+
+  * No doble reserva
+  * Idempotencia de pagos
+  * Expiración correcta de holds
+* Reportar defectos con evidencia clara
+* Mantener matriz de trazabilidad actualizada
+* Validar criterios DoD antes del release
+
+---
+
+### 7.2 DEV (Desarrollo)
+
+* Implementar lógica de negocio y endpoints
+* Garantizar cumplimiento de contratos API
+* Escribir pruebas unitarias (Pytest)
+* Soportar debugging de issues detectados por QA
+* Implementar fixes y validar regresión
+* Configurar logs y métricas necesarias
+* Asegurar control transaccional (ACID)
+
+---
+
+### 7.3 Responsabilidad Compartida
+
+* Definición de criterios de aceptación
+* Revisión de historias (DoR)
+* Análisis de defectos críticos
+* Validación de performance y estabilidad
+
+---
+
+## 8. Cronograma y Estimación QA (Ajustado a Micro-Sprints)
+
+### 8.1 Enfoque de Ejecución
+
+Dado que el tiempo disponible es **4 días (2 micro-sprints de 2 días)**, se adopta una estrategia de:
+
+* **Risk-Based Testing (RBT)** — foco exclusivo en HUs críticas (**A — Alto**)
+* **Testing mínimo viable (MVT)** — validar invariantes del negocio
+* **Automatización selectiva** — solo flujos críticos
+* **Cobertura reducida pero suficiente para liberar MVP**
+
+---
+
+### 8.2 Alcance Realista QA
+
+| Tipo          | Incluido                | Excluido   |
+| ------------- | ----------------------- | ---------- |
+| **Alto (A)**  | ✅ 80% obligatorio      | —          |
+| **Medio (S)** | ⚠️ Parcial (happy path) | Edge cases |
+| **Bajo (D)**  | ❌ Excluido              | Todo       |
+
+---
+
+### 8.3 Priorización de Historias
+
+| Prioridad  | HU       | Motivo                       |
+| ---------- | -------- | ---------------------------- |
+| 🔴 Crítico | HU3      | Concurrencia (doble reserva) |
+| 🔴 Crítico | HU5      | Pago idempotente             |
+| 🔴 Crítico | HU2      | Disponibilidad consistente   |
+| 🔴 Crítico | HU6      | Confirmación correcta        |
+| 🔴 Crítico | HU7      | Liberación de inventario     |
+| 🔴 Crítico | HU8      | Expiración automática        |
+| 🟡 Medio   | HU11     | Validación básica            |
+| ⚪ Bajo     | HU0, HU1 | Solo smoke                   |
+
+---
+
+### 8.4 Estimación QA Ajustada
+
+| HU      | Tipo         | Esfuerzo Original | Esfuerzo Ajustado | Estrategia                    |
+| ------- | ------------ | ----------------- | ----------------- | ----------------------------- |
+| HU3     | Concurrencia | 24h               | 8h                | 1 escenario crítico (2 hilos) |
+| HU5     | Pago         | 16h               | 6h                | Idempotencia básica           |
+| HU2     | API          | 12h               | 4h                | Happy path + 1 negativo       |
+| HU6     | Estado       | 10h               | 4h                | Flujo principal               |
+| HU7     | Estado       | 8h                | 3h                | Caso principal                |
+| HU8     | Worker       | 12h               | 5h                | Expiración básica             |
+| HU11    | Validación   | 8h                | 2h                | Validación mínima             |
+| HU0/HU1 | Infra        | 20h               | 2h                | Smoke                         |
+
+**Total ajustado QA:** ~34 horas → comprimido a ejecución intensiva en 4 días
+
+---
+
+### 8.5 Plan por Micro-Sprint
+
+#### 🚀 Micro-Sprint 1 (Día 1–2)
+
+**Objetivo:** Validar núcleo transaccional
+
+| Día     | Actividad                          |
+| ------- | ---------------------------------- |
+| Día 1   | Setup entorno + smoke (HU0, HU1)   |
+| Día 1   | Pruebas HU2 (disponibilidad)       |
+| Día 1–2 | Pruebas HU3 (concurrencia crítica) |
+| Día 2   | Pruebas HU6 (confirmación)         |
+
+**Salida esperada:**
+
+* Validación de **no doble reserva**
+* Flujo básico de reserva funcional
+
+---
+
+#### 🚀 Micro-Sprint 2 (Día 3–4)
+
+**Objetivo:** Validar resiliencia del sistema
+
+| Día     | Actividad                   |
+| ------- | --------------------------- |
+| Día 3   | HU5 (idempotencia pagos)    |
+| Día 3   | HU7 (liberación por fallo)  |
+| Día 3–4 | HU8 (worker expiración)     |
+| Día 4   | HU11 (validaciones mínimas) |
+| Día 4   | Regresión crítica + smoke   |
+
+
+
+---
+
+## 9. Entregables de Prueba
+
+### 9.1 Artefactos Generados
+
+| Entregable                    | Descripción                         |
+| ----------------------------- | ----------------------------------- |
+| **Scripts Automatizados**     | Serenity + Cucumber, Karate, k6, Pytest                  |
+| **Reportes de Ejecución**     | Resultados por suite (JSON / HTML)  |
+| **Repositorio de pruebas**    | Cada uno independiente     |
+| **Ejecución manual**    | Pantallazo o video corto         |
+| **Reporte de bugs**          | Tambien se reportan incidencias |
+
+---
+
+## 10. Matriz de Riesgo
 
 | HU | Riesgo Técnico | Riesgo de Negocio | Clasificación | Acción Obligatoria |
 |---|---|---|---|---|
@@ -112,454 +309,9 @@ Este plan cubre la estrategia de calidad integral para el sistema **Travel Hotel
 
 ---
 
-## 6. Escenarios Gherkin por Historia de Usuario
+## Anexos
 
----
-
-### HU0 — Configuración del Ecosistema de Datos
-
-**Riesgo:** A — Alto | **Story Points:** 5
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | SELECT FOR UPDATE bloquea fila ante transacción concurrente | `@smoke @alto` |
-| 2 | Error path | ROLLBACK mantiene integridad ante error en transacción | `@alto` |
-| 3 | Infra | Pipeline CI/CD aplica migraciones sin afectar datos de prueba | `@alto @infraestructura` |
-
-```gherkin
-#language: es
-Característica: Configuración del Ecosistema de Datos
-  Como equipo de ingeniería
-  Quiero un entorno de persistencia con transacciones ACID
-  Para garantizar que el motor de reservas opere con consistencia y seguridad
-
-  @smoke @alto @infraestructura
-  Escenario: Bloqueo de fila impide modificación concurrente (SELECT FOR UPDATE)
-    Dado que la base de datos PostgreSQL está inicializada
-    Y la habitación "101" existe en la tabla de habitaciones
-    Cuando la transacción A ejecuta SELECT FOR UPDATE sobre la habitación "101"
-    Y la transacción B intenta actualizar la habitación "101" antes de que A haga COMMIT
-    Entonces la transacción B debe quedar en espera
-    Y la modificación de B se aplica únicamente DESPUÉS de que A finalice con COMMIT
-
-  @alto @infraestructura
-  Escenario: ROLLBACK mantiene consistencia ante error en transacción
-    Dado que una transacción inicia una operación de reserva sobre la habitación "102"
-    Cuando ocurre un error durante la operación (timeout / excepción)
-    Entonces la transacción hace ROLLBACK automáticamente
-    Y la habitación "102" no presenta ningún cambio de estado en la base de datos
-
-  @alto @infraestructura
-  Escenario: Pipeline CI/CD ejecuta migraciones en entorno de pruebas sin afectar datos
-    Dado que el pipeline CI/CD está configurado con una base de datos de prueba separada
-    Cuando se despliega una versión con migraciones pendientes
-    Entonces las migraciones se aplican sin error
-    Y los datos pre-existentes del entorno de pruebas no se ven afectados
-```
-
----
-
-### HU1 — Seeder de Inventario Inicial
-
-**Riesgo:** D — Bajo | **Story Points:** 2
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | Seeder carga tablas con registros válidos | `@smoke @bajo` |
-| 2 | Edge case | Seeder es idempotente (sin duplicados en segunda ejecución) | `@bajo` |
-| 3 | Error path | Seeder falla con mensaje claro si DB está offline | `@bajo` |
-
-```gherkin
-#language: es
-Característica: Seeder de Inventario Inicial
-  Como equipo de desarrollo
-  Quiero una carga automática de hoteles y habitaciones
-  Para realizar pruebas funcionales sin ingresos manuales
-
-  @smoke @bajo
-  Escenario: Carga exitosa de datos maestros
-    Dado que el entorno de base de datos está vacío
-    Cuando se ejecuta el script de seeder
-    Entonces la tabla de Hoteles debe contener al menos 1 registro válido
-    Y la tabla de Habitaciones debe contener al menos 3 registros válidos con tipo y capacidad
-
-  @bajo @edge-case
-  Escenario: Seeder es idempotente al ejecutarse dos veces
-    Dado que el seeder ya fue ejecutado una vez con datos válidos
-    Cuando se ejecuta el seeder por segunda vez
-    Entonces no se crean registros duplicados en Hoteles ni en Habitaciones
-    Y el conteo de registros permanece igual al de la primera ejecución
-
-  @bajo @error-path
-  Escenario: Seeder falla con error claro si la base de datos está offline
-    Dado que la base de datos está offline o inaccesible
-    Cuando se intenta ejecutar el script de seeder
-    Entonces el proceso termina con un mensaje de error descriptivo
-    Y no deja la base de datos en estado inconsistente
-```
-
----
-
-### HU2 — Consulta de Disponibilidad Consistente
-
-**Riesgo:** A — Alto | **Story Points:** 3
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | Habitación sin bloqueo aparece en resultados | `@smoke @alto` |
-| 2 | Happy path | Hold en fechas distintas no afecta búsqueda actual | `@alto` |
-| 3 | Error path | Habitación con Hold activo excluida de resultados | `@smoke @alto` |
-| 4 | Error path | Habitación con reserva confirmada excluida | `@alto` |
-| 5 | Edge case | Solapamiento parcial de fechas excluye habitación | `@edge-case` |
-| 6 | Edge case | Hold expirado no afecta disponibilidad | `@edge-case` |
-| 7 | Edge case | Sin habitaciones disponibles muestra mensaje informativo | `@edge-case` |
-
-```gherkin
-#language: es
-Característica: Consulta de Disponibilidad Consistente
-  Como viajero
-  Quiero ver solo las habitaciones que no tienen reservas ni bloqueos activos
-  Para tomar una decisión basada en la disponibilidad real del hotel
-
-  Antecedentes:
-    Dado que el sistema tiene registradas las siguientes habitaciones:
-      | habitacion | tipo       | capacidad |
-      | 101        | doble      | 2         |
-      | 102        | individual | 1         |
-      | 103        | suite      | 4         |
-
-  @smoke @alto @happy-path
-  Escenario: Habitación sin bloqueo ni reserva aparece en resultados de disponibilidad
-    Dado que la habitación "102" no tiene ningún bloqueo ni reserva activa
-    Cuando el viajero busca disponibilidad del "2026-04-10" al "2026-04-12"
-    Entonces el sistema muestra la habitación "102" en los resultados
-
-  @alto @happy-path
-  Escenario: Hold en fechas distintas no afecta disponibilidad para otras fechas
-    Dado que la habitación "103" tiene un Hold activo del "2026-04-20" al "2026-04-22"
-    Cuando el viajero busca disponibilidad del "2026-04-10" al "2026-04-12"
-    Entonces el sistema muestra la habitación "103" en los resultados de disponibilidad
-
-  @smoke @alto @error-path
-  Escenario: Exclusión de habitación con bloqueo temporal activo (Hold)
-    Dado que la habitación "101" tiene un Hold activo del "2026-04-10" al "2026-04-12"
-    Cuando el viajero busca disponibilidad del "2026-04-10" al "2026-04-12"
-    Entonces el sistema NO muestra la habitación "101" en los resultados
-    Y el sistema muestra al menos una habitación alternativa disponible
-
-  @alto @error-path
-  Escenario: Habitación con reserva confirmada activa es excluida de resultados
-    Dado que la habitación "103" tiene una reserva confirmada del "2026-04-10" al "2026-04-12"
-    Cuando el viajero busca disponibilidad del "2026-04-10" al "2026-04-12"
-    Entonces el sistema NO muestra la habitación "103" en los resultados
-
-  @edge-case
-  Escenario: Solapamiento parcial de fechas excluye la habitación
-    Dado que la habitación "102" tiene un Hold activo del "2026-04-11" al "2026-04-14"
-    Cuando el viajero busca disponibilidad del "2026-04-10" al "2026-04-12"
-    Entonces el sistema NO muestra la habitación "102" en los resultados
-
-  @edge-case
-  Escenario: Hold expirado no afecta disponibilidad actual
-    Dado que la habitación "101" tuvo un Hold que expiró el "2026-03-01"
-    Y no tiene bloqueos ni reservas activas en la actualidad
-    Cuando el viajero busca disponibilidad del "2026-04-10" al "2026-04-12"
-    Entonces el sistema muestra la habitación "101" en los resultados
-
-  @edge-case
-  Escenario: Sin habitaciones disponibles para las fechas solicitadas muestra mensaje informativo
-    Dado que todas las habitaciones tienen bloqueos o reservas activas del "2026-04-10" al "2026-04-12"
-    Cuando el viajero busca disponibilidad del "2026-04-10" al "2026-04-12"
-    Entonces el sistema muestra un mensaje indicando que no hay habitaciones disponibles
-    Y no se muestran fichas de habitaciones en los resultados
-```
-
----
-
-### HU3 — Bloqueo Atómico de Checkout (Hold)
-
-**Riesgo:** A — Alto | **Story Points:** 8
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | Bloqueo exitoso genera Hold con 10 min de duración | `@smoke @alto` |
-| 2 | Concurrencia | Solo el primer usuario obtiene el bloqueo | `@smoke @alto @concurrencia` |
-| 3 | Error path | Intento de Hold sobre habitación ya bloqueada | `@alto` |
-| 4 | Seguridad | Usuario no autenticado no puede crear Hold | `@alto @seguridad` |
-
-```gherkin
-#language: es
-Característica: Bloqueo Atómico de Checkout (Hold)
-  Como viajero
-  Quiero que la habitación se aparte exclusivamente para mí por 10 minutos al seleccionarla
-  Para completar mis datos de pago sin riesgo de que alguien más la reserve
-
-  @smoke @alto @happy-path
-  Escenario: Bloqueo exitoso genera un Hold en estado PENDING con 10 minutos de duración
-    Dado que la habitación "202" está disponible
-    Cuando el viajero autenticado solicita bloquear la habitación "202" del "2026-04-10" al "2026-04-12"
-    Entonces el sistema crea un Hold con estado "PENDING"
-    Y el Hold tiene una fecha de expiración de 10 minutos desde el momento actual
-
-  @smoke @alto @concurrencia
-  Escenario: Prevención de colisión de reserva (Race Condition)
-    Dado que la habitación "202" está disponible
-    Cuando el usuario A y el usuario B intentan bloquear la habitación "202" simultáneamente
-    Entonces el sistema confirma el bloqueo al primer usuario que completa la transacción
-    Y rechaza la solicitud del segundo usuario con el mensaje "Habitación no disponible"
-    Y solo existe UN Hold activo en la base de datos para la habitación "202"
-
-  @alto @error-path
-  Escenario: Intento de bloqueo sobre habitación ya bloqueada es rechazado
-    Dado que la habitación "202" ya tiene un Hold activo del usuario A
-    Cuando el usuario B intenta crear un Hold para la habitación "202" en las mismas fechas
-    Entonces el sistema responde con error "Habitación no disponible"
-    Y el Hold del usuario A permanece sin modificación
-
-  @alto @seguridad
-  Escenario: Usuario no autenticado no puede crear un Hold
-    Dado que el usuario no está autenticado (sin token válido)
-    Cuando intenta crear un bloqueo para la habitación "202"
-    Entonces el sistema responde con error de autenticación 401
-    Y no se crea ningún registro de Hold en la base de datos
-```
-
----
-
-### HU5 — Procesamiento de Pago Idempotente
-
-**Riesgo:** A — Alto | **Story Points:** 5
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | Reintento con misma clave retorna éxito original sin nuevo cobro | `@smoke @alto` |
-| 2 | Error path | Reintento de pago rechazado retorna rechazo original | `@alto` |
-| 3 | Edge case | Nueva clave permite nuevo intento de pago | `@alto` |
-| 4 | Seguridad | Clave no puede reutilizarse en Hold diferente | `@alto @seguridad` |
-
-```gherkin
-#language: es
-Característica: Procesamiento de Pago Idempotente
-  Como viajero
-  Quiero que mi pago se procese una sola vez ante reintentos de red
-  Para evitar cargos duplicados en mi cuenta
-
-  @smoke @alto @happy-path
-  Escenario: Reintento de pago con la misma clave de idempotencia retorna el éxito anterior
-    Dado que un pago fue procesado exitosamente para el Hold "ID-99"
-    Y la clave de idempotencia usada fue "KEY-ABC"
-    Cuando el sistema recibe una segunda solicitud de pago con la misma clave "KEY-ABC"
-    Entonces el sistema retorna el resultado de éxito de la transacción original
-    Y no se realiza ningún nuevo cobro al usuario
-
-  @alto @error-path
-  Escenario: Reintento de pago rechazado con la misma clave retorna el rechazo original
-    Dado que un pago fue rechazado para el Hold "ID-100" con la clave "KEY-DEF"
-    Cuando el sistema recibe una segunda solicitud con la misma clave "KEY-DEF"
-    Entonces el sistema retorna el resultado de rechazo original
-    Y no se intenta procesar el pago nuevamente
-
-  @alto @edge-case
-  Escenario: Nueva clave de idempotencia permite un nuevo intento de pago
-    Dado que un pago fue rechazado para el Hold "ID-101" con la clave "KEY-GHI"
-    Cuando el sistema recibe una solicitud con la nueva clave "KEY-XYZ"
-    Entonces el sistema procesa la solicitud de pago como una nueva transacción
-    Y el resultado puede ser éxito o rechazo según el estado actual
-
-  @alto @seguridad
-  Escenario: Clave de idempotencia no puede ser reutilizada para un Hold diferente
-    Dado que la clave "KEY-ABC" fue usada exitosamente para el Hold "ID-99"
-    Cuando se intenta usar la misma clave "KEY-ABC" para el Hold "ID-200"
-    Entonces el sistema rechaza la operación
-    Y retorna error "Clave de idempotencia inválida para este Hold"
-```
-
----
-
-### HU6 — Confirmación Definitiva de Reserva
-
-**Riesgo:** A — Alto | **Story Points:** 3
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | Hold pasa de PENDING a CONFIRMED tras pago exitoso | `@smoke @alto` |
-| 2 | Error path | Pago fallido no modifica el estado del Hold | `@alto` |
-| 3 | Edge case | Intento de confirmar Hold expirado es rechazado | `@alto` |
-| 4 | Edge case | Inventario descontado permanentemente tras confirmación | `@alto` |
-
-```gherkin
-#language: es
-Característica: Confirmación Definitiva de Reserva
-  Como viajero
-  Quiero que mi reserva pase de Bloqueada a Confirmada tras el pago
-  Para recibir mi garantía de estancia
-
-  @smoke @alto @happy-path
-  Escenario: Transición de estado PENDING a CONFIRMED tras pago exitoso
-    Dado que existe un Hold en estado "PENDING" para la habitación "305" del "2026-04-10" al "2026-04-12"
-    Cuando el procesador de pagos retorna el estado "SUCCESS"
-    Entonces el Hold cambia al estado "CONFIRMED"
-    Y la habitación "305" queda marcada como no disponible permanentemente para esas fechas
-
-  @alto @error-path
-  Escenario: Pago fallido no modifica el estado PENDING del Hold
-    Dado que existe un Hold en estado "PENDING" para la habitación "305"
-    Cuando el procesador de pagos retorna el estado "FAILED"
-    Entonces el Hold NO cambia a estado "CONFIRMED"
-    Y la habitación "305" no queda bloqueada permanentemente
-
-  @alto @edge-case
-  Escenario: Intento de confirmar un Hold ya expirado es rechazado
-    Dado que un Hold fue marcado como "EXPIRED" por el Worker antes de recibir confirmación de pago
-    Cuando el sistema intenta cambiar el estado del Hold a "CONFIRMED"
-    Entonces el sistema rechaza la transición con error "Hold expirado — no se puede confirmar"
-    Y el estado permanece en "EXPIRED"
-
-  @alto @edge-case
-  Escenario: Inventario descontado permanentemente impide nueva disponibilidad
-    Dado que el Hold "ID-150" fue confirmado exitosamente
-    Cuando otro viajero busca disponibilidad para la misma habitación y las mismas fechas
-    Entonces el sistema NO muestra la habitación como disponible
-```
-
----
-
-### HU7 — Liberación Proactiva por Fallo de Pago
-
-**Riesgo:** A — Alto | **Story Points:** 2
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | Pago DECLINED cambia Hold a RELEASED inmediatamente | `@smoke @alto` |
-| 2 | Edge case | Señal de rechazo tardía no afecta Hold ya CONFIRMED | `@alto` |
-| 3 | Edge case | Múltiples señales de rechazo no generan estado inconsistente | `@alto` |
-
-```gherkin
-#language: es
-Característica: Liberación Proactiva por Fallo de Pago
-  Como sistema
-  Quiero liberar la habitación de inmediato si el pago es rechazado
-  Para que el hotel no pierda oportunidades de venta con otros clientes
-
-  @smoke @alto @happy-path
-  Escenario: Pago declinado por el banco cambia el Hold a RELEASED y libera la habitación
-    Dado que existe un Hold activo en estado "PENDING" para la habitación "305"
-    Cuando la pasarela de pagos retorna el estado "DECLINED"
-    Entonces el sistema cambia el estado del Hold a "RELEASED" inmediatamente
-    Y la habitación "305" vuelve a aparecer como disponible en el buscador
-
-  @alto @edge-case
-  Escenario: Señal de rechazo tardía no modifica Hold ya CONFIRMED
-    Dado que el Hold "ID-200" está en estado "CONFIRMED" (pago ya aprobado)
-    Cuando se recibe una segunda señal de pago con estado "DECLINED" (señal duplicada o tardía)
-    Entonces el sistema NO cambia el estado del Hold
-    Y la reserva permanece en estado "CONFIRMED"
-
-  @alto @edge-case
-  Escenario: Múltiples señales de rechazo no generan registros inconsistentes
-    Dado que el Hold "ID-201" ya fue liberado (estado "RELEASED")
-    Cuando el sistema recibe una segunda señal de pago "DECLINED" para el mismo Hold
-    Entonces el estado permanece en "RELEASED"
-    Y no se crean registros duplicados de liberación en la base de datos
-```
-
----
-
-### HU8 — Expiración Automática de Bloqueos (Worker)
-
-**Riesgo:** A — Alto | **Story Points:** 3
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Happy path | Worker expira Hold con más de 10 min sin pago | `@smoke @alto @worker` |
-| 2 | Negativo | Worker NO expira Hold con menos de 10 min | `@alto` |
-| 3 | Edge case | Worker procesa múltiples Holds expirados en una ejecución | `@alto` |
-| 4 | Edge case | Worker no modifica Holds ya CONFIRMED o RELEASED | `@alto` |
-
-```gherkin
-#language: es
-Característica: Expiración Automática de Bloqueos (Worker)
-  Como administrador
-  Quiero que el sistema libere automáticamente los bloqueos que superen los 10 minutos
-  Para evitar que el inventario quede retenido por carritos abandonados
-
-  @smoke @alto @worker
-  Escenario: Worker expira un Hold con más de 10 minutos sin pago
-    Dado que existe un Hold en estado "PENDING" creado hace 11 minutos
-    Cuando el proceso de limpieza (Worker) se ejecuta
-    Entonces el estado del Hold cambia a "EXPIRED"
-    Y la habitación asociada queda libre para nuevas búsquedas
-
-  @alto @negativo
-  Escenario: Worker NO expira un Hold con menos de 10 minutos
-    Dado que existe un Hold en estado "PENDING" creado hace 8 minutos
-    Cuando el proceso de limpieza (Worker) se ejecuta
-    Entonces el Hold permanece en estado "PENDING"
-    Y la habitación asociada NO queda disponible
-
-  @alto @edge-case
-  Escenario: Worker procesa múltiples Holds expirados en una sola ejecución
-    Dado que existen 5 Holds en estado "PENDING" con más de 10 minutos de antigüedad
-    Cuando el Worker se ejecuta
-    Entonces los 5 Holds cambian a estado "EXPIRED"
-    Y las 5 habitaciones asociadas quedan disponibles para nuevas búsquedas
-
-  @alto @edge-case
-  Escenario: Worker no modifica Holds en estado CONFIRMED o RELEASED
-    Dado que existen Holds con estado "CONFIRMED" y "RELEASED" con más de 10 minutos de antigüedad
-    Cuando el Worker se ejecuta
-    Entonces esos Holds NO cambian de estado
-    Y los datos de reserva permanecen intactos
-```
-
----
-
-### HU11 — Validación de Integridad de Fechas
-
-**Riesgo:** S — Medio | **Story Points:** 3
-
-| # | Tipo | Flujo | Tag |
-|---|------|-------|-----|
-| 1 | Error path | Check-out anterior a Check-in es rechazado | `@smoke @medio` |
-| 2 | Error path | Check-out igual a Check-in es rechazado (mínimo 1 noche) | `@medio` |
-| 3 | Error path | Check-in en el pasado es rechazado | `@medio` |
-| 4 | Happy path | Fechas coherentes y futuras son aceptadas | `@medio` |
-
-```gherkin
-#language: es
-Característica: Validación de Integridad de Fechas
-  Como sistema
-  Quiero validar que las fechas de reserva sean lógicamente coherentes
-  Para evitar errores lógicos en el inventario y en los cálculos de precio
-
-  @smoke @medio @error-path
-  Escenario: Fecha de salida anterior a la de entrada es rechazada
-    Cuando el usuario intenta reservar con Check-in "2026-10-20" y Check-out "2026-10-18"
-    Entonces el sistema rechaza la operación con el error "Fechas inválidas: la salida debe ser posterior a la entrada"
-    Y no se crea ningún Hold en la base de datos
-
-  @medio @error-path
-  Escenario: Fecha de salida igual a la de entrada es rechazada (mínimo 1 noche)
-    Cuando el usuario intenta reservar con Check-in "2026-10-20" y Check-out "2026-10-20"
-    Entonces el sistema rechaza la operación con el error "La estancia mínima es de 1 noche"
-    Y no se crea ningún Hold en la base de datos
-
-  @medio @error-path
-  Escenario: Fecha de entrada en el pasado es rechazada
-    Cuando el usuario intenta reservar con Check-in "2025-01-01" y Check-out "2025-01-03"
-    Entonces el sistema rechaza la operación con el error "La fecha de entrada no puede ser en el pasado"
-    Y no se crea ningún Hold en la base de datos
-
-  @medio @happy-path
-  Escenario: Fechas coherentes y futuras son procesadas exitosamente
-    Cuando el usuario intenta reservar con Check-in "2026-10-20" y Check-out "2026-10-25"
-    Entonces el sistema procesa la solicitud exitosamente
-    Y permite continuar al siguiente paso del flujo de checkout
-```
-
----
-
-## 7. Datos de Prueba Consolidados
+## Datos de Prueba Consolidados
 
 | HU | Campo | Valor Válido | Valor Inválido | Valor Borde |
 |---|---|---|---|---|
@@ -605,7 +357,7 @@ Característica: Validación de Integridad de Fechas
 
 ---
 
-## 8. Matriz de Trazabilidad: AC → Escenario → Cobertura
+## Matriz de Trazabilidad: AC → Escenario → Cobertura
 
 | HU | Criterio de Aceptación (Backlog) | Escenario Gherkin | Estado |
 |---|---|---|---|
@@ -623,7 +375,7 @@ Característica: Validación de Integridad de Fechas
 
 ---
 
-## 9. Consideraciones de Performance
+## Consideraciones de Performance
 
 > Condición de ejecución: activar `/performance-analyzer` cuando se definan SLAs formales en la spec del proyecto.
 
@@ -647,7 +399,7 @@ Característica: Validación de Integridad de Fechas
 
 ---
 
-## 10. Consideraciones de Seguridad (OWASP Top 10)
+## Consideraciones de Seguridad (OWASP Top 10)
 
 | Riesgo OWASP | HU Relacionada | Escenario de Prueba |
 |---|---|---|
@@ -657,7 +409,7 @@ Característica: Validación de Integridad de Fechas
 
 ---
 
-## 11. Resumen de Tags para Ejecución por Suite
+## Resumen de Tags para Ejecución por Suite
 
 | Suite | Tags | HUs Incluidas | Condición |
 |---|---|---|---|
@@ -670,6 +422,4 @@ Característica: Validación de Integridad de Fechas
 
 ---
 
-*Generado por QA Agent (ASDD) — 2026-03-24*  
-*Skills aplicados: `/gherkin-case-generator` + `/risk-identifier`*  
-*Actualizar la columna "Estado" de la Matriz de Trazabilidad con los resultados reales de ejecución tras cada sprint.*
+
