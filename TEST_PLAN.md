@@ -142,6 +142,7 @@ Este plan cubre la estrategia de calidad integral para el sistema **Travel Hotel
 | **Postman (opcional)**      | Exploratorio       | Pruebas manuales rápidas                             |
 | **CI/CD (GitHub Actions)**  | Automatización     | Ejecución de suites (smoke, regresión, concurrencia) |
 | **DBeaver / psql**          | DB Client          | Validación directa de datos y locks                  |
+| **Pytest**                  | DB Infraestructura | Validación directa de datos y seeder                  |
 
 ---
 
