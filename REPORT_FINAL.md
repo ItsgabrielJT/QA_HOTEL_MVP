@@ -282,11 +282,10 @@ Checks funcionales pasados (100%):
 
 ## 8. Bugs Encontrados
 
-> Esta seccion esta reservada para ser completada por el QA responsable con los defectos identificados durante la sesion de pruebas.
-
-| ID | Endpoint | Severity | Descripcion | Estado |
-|---|---|---|---|---|
-| — | — | — | — | — |
+| ID | Modulo | Tipo de prueba | Severity | Descripcion | Estado |
+|---|---|---|---|---|---|
+| BUG-01 | Hold / Disponibilidad | Manual | Medium | Al expirar el tiempo de bloqueo de una habitacion, el backend no emite ningun estado `EXPIRED` ni notificacion activa: simplemente libera la habitacion en base de datos de forma silenciosa. El mensaje de tiempo agotado solo aparece del lado del frontend. Como consecuencia, la lista de habitaciones disponibles no se actualiza automaticamente y el usuario debe recargar la pagina manualmente para ver las habitaciones que volvieron a estar disponibles. Se espera que el sistema actualice la disponibilidad en tiempo real (o via polling/push) cuando un hold expira, sin requerir intervencion del usuario. | Open |
+| BUG-02 | Reservas | Manual | High | No existe un endpoint ni una seccion en el sistema donde el usuario pueda consultar su reservacion utilizando el `reservation_code` recibido al confirmar el pago. El codigo de confirmacion se entrega al usuario pero no tiene una funcionalidad correspondiente que permita recuperar el detalle de la reserva a partir de el. Se requiere implementar un endpoint `GET /reservations?code={reservation_code}` o equivalente, y la pantalla de consulta de reserva por codigo en el frontend. | Open |
 
 ---
 
@@ -299,6 +298,8 @@ Checks funcionales pasados (100%):
 | Agotamiento de inventario bajo carga extrema | Informativo | Bajo 80 VUs concurrentes el inventario de 2027 se agota; el sistema responde correctamente con 409/400. Se recomienda ampliar el pool de fechas de prueba o sembrar mas habitaciones para pruebas de stress. |
 | Casos de HU8 sin cobertura automatizada | Medio | El worker de expiracion de holds no es activable desde suites externas. Riesgo de regresion silenciosa en esa logica. |
 | Concurrencia TC-HU3-02 sin cobertura | Medio | El caso de dos usuarios intentando el mismo hold simultaneamente no esta validado de forma confiable. |
+| BUG-01: Expiracion de hold sin notificacion activa | Medio | El usuario debe recargar la pagina para ver la disponibilidad actualizada tras un hold expirado. Impacto directo en la experiencia del flujo de reserva. |
+| BUG-02: Consulta de reserva por codigo no implementada | Alto | El usuario recibe un `reservation_code` que no puede usar para nada dentro del sistema. Funcionalidad critica del flujo post-pago ausente. |
 
 ---
 
@@ -330,7 +331,9 @@ El sistema demuestra estabilidad solida en todos los flujos criticos del motor d
 - No se encontraron vulnerabilidades de riesgo alto o medio en el escaneo OWASP ZAP.
 - Las dos alertas de seguridad de nivel bajo son configurables sin cambios de logica de negocio.
 
-**Recomendacion:** El sistema puede avanzar a una instancia de staging con las dos correcciones de headers de seguridad aplicadas y con la documentacion de los gaps de cobertura (HU8, TC-HU3-02) como deuda tecnica de QA explicitada.
+Se encontraron 2 defectos mediante pruebas manuales: **BUG-01** (expiracion de hold sin actualizacion automatica de disponibilidad, severidad Medium) y **BUG-02** (ausencia del endpoint y pantalla de consulta de reserva por `reservation_code`, severidad High). Ambos deben resolverse antes de habilitar el sistema para usuarios finales.
+
+**Recomendacion:** El sistema puede avanzar a una instancia de staging con las dos correcciones de headers de seguridad aplicadas, los dos bugs priorizados en backlog, y con la documentacion de los gaps de cobertura (HU8, TC-HU3-02) como deuda tecnica de QA explicitada.
 
 ---
 
