@@ -1,0 +1,75 @@
+name: Reporte — Consolidado E2E QA
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Se activa cuando el pipeline de HOTEL-MVP empuja un nuevo reporte en
+# reports/ y genera/actualiza CONSOLIDATED_REPORT.md con el índice completo
+# y el detalle de la última ejecución.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'reports/**'
+
+concurrency:
+  group: consolidated-report
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate-report:
+    name: Generar reporte consolidado
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generar CONSOLIDATED_REPORT.md
+        run: |
+          {
+            echo "# QA Hotel MVP — Reporte Consolidado E2E"
+            echo ""
+            echo "_Última actualización automática: $(date -u '+%Y-%m-%d %H:%M:%S UTC')_"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Índice de ejecuciones"
+            echo ""
+            count=$(ls reports/*.md 2>/dev/null | wc -l | tr -d ' ')
+            echo "_Total de reportes registrados: **${count}**_"
+            echo ""
+            echo "| Ejecución | Enlace |"
+            echo "|-----------|--------|"
+            for f in $(ls -t reports/*.md 2>/dev/null); do
+              name=$(basename "$f" .md)
+              echo "| \`${name}\` | [Ver reporte]($f) |"
+            done
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Última ejecución"
+            echo ""
+            latest=$(ls -t reports/*.md 2>/dev/null | head -1)
+            if [ -n "$latest" ]; then
+              cat "$latest"
+            else
+              echo "_No hay reportes registrados aún._"
+            fi
+          } > CONSOLIDATED_REPORT.md
+
+      - name: Commit y publicar
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CONSOLIDATED_REPORT.md
+          git diff --staged --quiet || git commit -m "ci: actualizar reporte consolidado [skip ci]"
+          git push
