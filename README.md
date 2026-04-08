@@ -36,16 +36,33 @@ Tambien incluyen el escaneo de seguridad automatizado con OWASP ZAP que corre en
 
 Generadas en [HOTEL_QA_TEST_K6](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_K6).
 
-Validan que los flujos criticos del motor de reservas cumplan los SLOs definidos bajo distintos niveles de carga:
+Es una suite externa de rendimiento y carga para el motor de reservas. Usa k6 organizado por dominio de negocio con clients, scenarios, config y helpers para mantener trazabilidad entre historias de usuario, casos de prueba y metricas.
 
-| Test | VUs | Duracion | Proposito |
-|---|---|---|---|
-| `smoke-test.js` | 1 VU | ~1m45s | Verificacion basica de script y sistema |
-| `load-test.js` | 16 VUs | 3 min | Carga normal sostenida |
-| `stress-test.js` | 80 VUs | 12 min | Limite de capacidad del sistema |
-| `idempotency-test.js` | 1 VU | ~2 min | Idempotencia de pagos (HU5) |
+Objetivos principales:
+- Validar que los flujos criticos cumplan los SLOs definidos bajo carga sostenida.
+- Ejecutar pruebas funcionales y de rendimiento sobre disponibilidad, holds, pagos, reservas y validacion de fechas.
+- Detectar degradacion de latencia p95 y p99, asi como errores HTTP bajo carga promedio, estres y concurrencia focalizada.
 
-Adicionalmente incluye `double-booking-test.js`, una prueba concurrente focalizada que valida que no se confirmen reservas duplicadas para la misma habitacion y rango bajo 20 VUs simultaneos.
+Cobertura activa documentada en la suite:
+- HU2: TC-HU2-01 y TC-HU2-07.
+- HU3: TC-HU3-01 y TC-HU3-03.
+- HU5: TC-HU5-01, TC-HU5-02 y TC-HU5-03.
+- HU6: TC-HU6-01, TC-HU6-02 y TC-HU6-03.
+- HU7: TC-HU7-01.
+- HU11: TC-HU11-01, TC-HU11-02, TC-HU11-03 y TC-HU11-04.
+- Concurrencia HU3/HU6: TC-DB-01 para doble booking con 20 VUs simultaneos.
+
+Tests principales incluidos:
+
+| Test | Perfil | Proposito |
+|---|---|---|
+| `smoke-test.js` | 1 VU | Verificacion basica del sistema y mayor cobertura funcional activa en una corrida corta |
+| `load-test.js` | 5-8 VUs en escenarios paralelos | Carga normal sostenida sobre disponibilidad, holds, pagos y validacion de fechas |
+| `stress-test.js` | hasta 50 VUs | Busqueda del punto de quiebre y degradacion del sistema |
+| `idempotency-test.js` | 1 VU focalizado | Validacion de idempotencia de pagos para HU5 |
+| `double-booking-test.js` | 20 VUs concurrentes | Validacion de 0 reservas duplicadas para una misma habitacion y rango |
+
+La suite tambien documenta casos fuera de alcance que hoy no son verificables de forma confiable con el contrato observable, para evitar falsos positivos y mantener trazabilidad del gap de automatizacion.
 
 ### Pruebas UI E2E — Serenity BDD + Screenplay
 
@@ -122,7 +139,13 @@ Contiene:
 
 ### Pruebas de Rendimiento — k6
 
-Los resultados se exportan en consola y en JSON. No tiene GitHub Pages dedicado; los resultados de cada corrida quedan disponibles como artefactos de GitHub Actions y pueden exportarse a Grafana Cloud k6.
+La suite no publica GitHub Pages dedicado. Su salida operativa se conserva como artefactos del workflow de GitHub Actions y puede exportarse adicionalmente a Grafana Cloud k6 cuando el entorno lo requiera.
+
+Contenido observable por corrida:
+- Metricas HTTP como `http_req_duration`, `http_req_failed` y percentiles p95 y p99.
+- Resultado de checks funcionales y thresholds compartidos.
+- Metricas custom por dominio como disponibilidad, hold, pago y doble booking.
+- Archivos JSON exportables para analisis posterior.
 
 **Pipeline CI:** [github.com/ItsgabrielJT/HOTEL_QA_TEST_K6/actions](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_K6/actions)
 
