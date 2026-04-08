@@ -116,6 +116,8 @@ Contiene:
 - Documentacion viva del flujo en lenguaje natural
 - Linea de tiempo de ejecucion
 
+**Pipeline CI:** [github.com/ItsgabrielJT/HOTEL_QA_TEST_SERENITY/actions](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_SERENITY/actions)
+
 ---
 
 ### Pruebas de Rendimiento — k6
