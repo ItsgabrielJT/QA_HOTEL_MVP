@@ -5,7 +5,7 @@
 **QA responsable:** Joel Tates  
 **Fecha:** 2026-04-06
 
-Este repositorio es el punto central de la estrategia de QA para el motor de reservas de Travel Hotel. Consolida los resultados, artefactos y reportes de las tres suites de prueba independientes ejecutadas sobre el sistema.
+Este repositorio es el punto central de la estrategia de QA para el motor de reservas de Travel Hotel. Consolida los resultados, artefactos y reportes de las suites de prueba independientes ejecutadas sobre el sistema, incluyendo cobertura funcional de API, rendimiento, base de datos y un flujo UI E2E complementario.
 
 ---
 
@@ -17,6 +17,7 @@ Cada suite vive en un repositorio separado para mantener el harness desacoplado 
 |---|---|---|---|
 | Pruebas funcionales de API | Karate + JUnit 5 + Gradle | HU2, HU3, HU5, HU6, HU11 | [HOTEL_QA_TEST_KARATE](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_KARATE) |
 | Pruebas de rendimiento | k6 (Grafana) | HU2, HU3, HU5, HU6, HU7, HU11 | [HOTEL_QA_TEST_K6](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_K6) |
+| Pruebas UI E2E | Java 17 + Gradle + Serenity BDD + Screenplay | HU2, HU3, HU6, HU7 | [HOTEL_QA_TEST_SERENITY](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_SERENITY) |
 | Pruebas de base de datos | pytest + psycopg + Allure | HU0, HU1 | [HOTEL_QA_TEST_BD](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_BD) |
 
 ---
@@ -43,6 +44,22 @@ Validan que los flujos criticos del motor de reservas cumplan los SLOs definidos
 | `load-test.js` | 16 VUs | 3 min | Carga normal sostenida |
 | `stress-test.js` | 80 VUs | 12 min | Limite de capacidad del sistema |
 | `idempotency-test.js` | 1 VU | ~2 min | Idempotencia de pagos (HU5) |
+
+Adicionalmente incluye `double-booking-test.js`, una prueba concurrente focalizada que valida que no se confirmen reservas duplicadas para la misma habitacion y rango bajo 20 VUs simultaneos.
+
+### Pruebas UI E2E — Serenity BDD + Screenplay
+
+Generadas en [HOTEL_QA_TEST_SERENITY](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_SERENITY).
+
+Automatizan el flujo visible para el usuario final sobre la aplicacion Hotel Booking MVP (`http://localhost:5173`) con Serenity BDD, Cucumber y el patron Screenplay. Cubren busqueda de habitaciones, reserva end-to-end con reintento tras pago rechazado y validacion de bloqueo concurrente en la UI.
+
+Cobertura principal documentada en el README de la suite:
+
+| Feature | Cobertura |
+|---|---|
+| `busqueda_habitaciones.feature` | Busqueda exitosa con fechas validas, validacion sin fechas y escenarios parametrizados |
+| `reserva_habitacion.feature` | Happy path completo de reserva, redireccion a checkout, mensaje de pago rechazado y confirmacion con codigo |
+| `bloqueo_habitacion.feature` | La habitacion elegida por un usuario deja de estar disponible para un segundo usuario |
 
 ### Pruebas de Base de Datos — pytest
 
@@ -87,6 +104,20 @@ Contiene:
 
 ---
 
+### Pruebas UI E2E — Serenity BDD + Screenplay
+
+El reporte HTML se genera localmente con Serenity tras ejecutar `./gradlew test aggregate`.
+
+**Reporte local:** `target/site/serenity/index.html`
+
+Contiene:
+- Capturas de pantalla por paso
+- Resumen ejecutivo de escenarios aprobados y fallidos
+- Documentacion viva del flujo en lenguaje natural
+- Linea de tiempo de ejecucion
+
+---
+
 ### Pruebas de Rendimiento — k6
 
 Los resultados se exportan en consola y en JSON. No tiene GitHub Pages dedicado; los resultados de cada corrida quedan disponibles como artefactos de GitHub Actions y pueden exportarse a Grafana Cloud k6.
@@ -97,7 +128,7 @@ Los resultados se exportan en consola y en JSON. No tiene GitHub Pages dedicado;
 
 ## Reporte Final de QA
 
-El reporte consolidado con todos los resultados, metricas, riesgos y conclusion de calidad esta en:
+El reporte consolidado con los resultados, metricas, riesgos y conclusion de calidad actualmente documentados esta en:
 
 **[REPORT_FINAL.md](./REPORT_FINAL.md)**
 
@@ -112,6 +143,8 @@ Cubre:
 8. Cobertura total
 9. Conclusion de calidad y veredicto
 
+La suite UI E2E con Serenity queda enlazada en este README como cobertura complementaria del flujo observable de reserva. Su reporte operativo vive en el repositorio dedicado de Serenity.
+
 **Veredicto:** `PASS WITH RISKS`
 
 ---
@@ -125,4 +158,5 @@ Cubre:
 | k6 Smoke | ✅ PASS | 30/30 checks, 0% error HTTP |
 | k6 Load (16 VUs) | ✅ PASS | 3963/3963 checks, 0% error HTTP |
 | k6 Stress (80 VUs) | ✅ PASS | 99.81% checks, 0.25% error HTTP |
+| Serenity UI E2E | ℹ️ INFO | Suite complementaria documentada; resultados se consultan en su reporte Serenity dedicado |
 | OWASP ZAP | ⚠️ WARN | 2 alertas Low (headers), 0 alertas High/Medium |
