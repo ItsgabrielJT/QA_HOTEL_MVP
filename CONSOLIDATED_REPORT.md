@@ -1,12 +1,12 @@
 # QA Hotel MVP — Reporte Consolidado E2E
 
-_Última actualización automática: 2026-04-08 23:14:06 UTC_
+_Última actualización automática: 2026-04-09 04:22:44 UTC_
 
 ---
 
 ## Índice de ejecuciones
 
-_Total de reportes registrados: **4**_
+_Total de reportes registrados: **5**_
 
 | Ejecución | Enlace |
 |-----------|--------|
@@ -14,6 +14,7 @@ _Total de reportes registrados: **4**_
 | `2026-04-08-03-19-41-e2e-report` | [Ver reporte](reports/2026-04-08-03-19-41-e2e-report.md) |
 | `2026-04-08-15-15-00-e2e-report` | [Ver reporte](reports/2026-04-08-15-15-00-e2e-report.md) |
 | `2026-04-08-23-13-58-e2e-report` | [Ver reporte](reports/2026-04-08-23-13-58-e2e-report.md) |
+| `2026-04-09-04-22-36-e2e-report` | [Ver reporte](reports/2026-04-09-04-22-36-e2e-report.md) |
 
 ---
 
