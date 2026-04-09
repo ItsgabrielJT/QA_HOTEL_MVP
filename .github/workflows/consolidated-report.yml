@@ -49,7 +49,7 @@ jobs:
             echo ""
             echo "| Ejecución | Enlace |"
             echo "|-----------|--------|"
-            for f in $(ls -t reports/*.md 2>/dev/null); do
+            for f in $(ls -r reports/*.md 2>/dev/null); do
               name=$(basename "$f" .md)
               echo "| \`${name}\` | [Ver reporte]($f) |"
             done
@@ -58,7 +58,7 @@ jobs:
             echo ""
             echo "## Última ejecución"
             echo ""
-            latest=$(ls -t reports/*.md 2>/dev/null | head -1)
+            latest=$(ls -r reports/*.md 2>/dev/null | head -1)
             if [ -n "$latest" ]; then
               cat "$latest"
             else
