@@ -133,6 +133,10 @@ Contiene:
 - Documentacion viva del flujo en lenguaje natural
 - Linea de tiempo de ejecucion
 
+Los reportes HTML se publican automaticamente en GitHub Pages tras cada ejecucion de CI.
+
+**GitHub Pages:** [itsgabrieljt.github.io/HOTEL_QA_TEST_SERENITY](https://itsgabrieljt.github.io/HOTEL_QA_TEST_SERENITY/)
+
 **Pipeline CI:** [github.com/ItsgabrielJT/HOTEL_QA_TEST_SERENITY/actions](https://github.com/ItsgabrielJT/HOTEL_QA_TEST_SERENITY/actions)
 
 ---
