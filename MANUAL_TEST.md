@@ -1,4 +1,4 @@
-## Reporte de bugs del sistema
+## Test Manuales
 
 ### Como usuario viajero
 
